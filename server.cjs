@@ -4,12 +4,18 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: 'https://hotel-frontend-brown.vercel.app',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: 'https://hotel-frontend-brown.vercel.app',
     methods: ['GET', 'POST']
   }
 });
@@ -65,6 +71,8 @@ setInterval(() => {
   });
 }, 1000 * 60 * 10); // cada 10 minutos
 
-server.listen(3000, () => {
-  console.log('🚀 Server running on http://localhost:3000');
+// Puerto para Render
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
