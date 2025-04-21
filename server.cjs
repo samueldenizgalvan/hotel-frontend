@@ -1,8 +1,9 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const connectedUsers = {};
 
 const app = express();
 app.use(cors());
@@ -15,39 +16,39 @@ const io = new Server(server, {
   }
 });
 
+// ------------------ Matches y persistencia ---------------------
 let matches = [];
+const matchesFile = path.join(__dirname, 'matches.json');
 
+const saveMatches = () => {
+  fs.writeFileSync(matchesFile, JSON.stringify(matches, null, 2));
+  console.log('💾 Matches saved to file');
+};
+
+const loadMatches = () => {
+  try {
+    if (fs.existsSync(matchesFile)) {
+      const data = fs.readFileSync(matchesFile);
+      matches = JSON.parse(data);
+      console.log(`✅ Loaded ${matches.length} matches from file`);
+    }
+  } catch (err) {
+    console.error("❌ Error loading matches:", err);
+  }
+};
+
+loadMatches(); // Cargar partidos al iniciar
+
+// ------------------ Usuarios conectados ---------------------
+const connectedUsers = {};
+
+// ------------------ Socket.IO ---------------------
 io.on('connection', (socket) => {
   console.log('🔗 Client connected:', socket.id);
 
   const formatHotelCode = (code) => {
     return code.trim().charAt(0).toUpperCase() + code.trim().slice(1).toLowerCase();
   };
-
-
-  // Eliminar un jugador de la partida
-  socket.on('removePlayer', ({ matchId, playerName }) => {
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return;
-  
-    // Elimina al jugador
-    match.joinRequests = match.joinRequests.filter((r) => r.guestName !== playerName);
-  
-    saveMatches(); // Guardamos el archivo
-  
-    const hotelMatches = matches.filter((m) => m.hotel === match.hotel);
-    io.to(match.hotel).emit('existingMatches', hotelMatches);
-  
-    // 🔥 Aquí está lo que faltaba:
-    socket.emit('playerRemoved', match);
-  });
-  
-  
-  
-  
-  
-  
-
 
   socket.on('identify', (username) => {
     connectedUsers[username] = socket.id;
@@ -62,7 +63,7 @@ io.on('connection', (socket) => {
 
   socket.on('createMatch', (match) => {
     matches.push(match);
-    saveMatches(); // ✅ guardamos el archivo
+    saveMatches();
     const hotelMatches = matches.filter(m => m.hotel === match.hotel);
     io.to(match.hotel).emit('existingMatches', hotelMatches);
     console.log(`🎾 Match created by ${match.creatorName} (${match.sport} - ${match.date} ${match.time})`);
@@ -78,7 +79,7 @@ io.on('connection', (socket) => {
     }
 
     match.joinRequests.push(request);
-    saveMatches(); // ✅ guardamos el archivo
+    saveMatches();
     const hotelMatches = matches.filter(m => m.hotel === match.hotel);
     io.to(match.hotel).emit('existingMatches', hotelMatches);
   });
@@ -88,9 +89,20 @@ io.on('connection', (socket) => {
     if (!match) return;
 
     match.note = note;
-    saveMatches(); // ✅ guardamos el archivo
+    saveMatches();
     const hotelMatches = matches.filter(m => m.hotel === match.hotel);
     io.to(match.hotel).emit('existingMatches', hotelMatches);
+  });
+
+  socket.on('removePlayer', ({ matchId, playerName }) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    match.joinRequests = match.joinRequests.filter(r => r.guestName !== playerName);
+    saveMatches();
+    const hotelMatches = matches.filter(m => m.hotel === match.hotel);
+    io.to(match.hotel).emit('existingMatches', hotelMatches);
+    console.log(`🚪 Player ${playerName} removed from match ${matchId}`);
   });
 
   socket.on('disconnect', () => {
@@ -98,24 +110,22 @@ io.on('connection', (socket) => {
   });
 });
 
-
-// Limpieza automática de partidos caducados
-// Limpieza automática: borra partidos 2 horas después de su hora
+// ------------------ Limpieza automática ---------------------
 setInterval(() => {
   const now = new Date();
-  matches = matches.filter(match => {
-    const [hour, minute] = match.time.split(':').map(Number); // ej. "10:00"
-    const matchDateTime = new Date(match.date);
-    matchDateTime.setHours(hour + 2, minute, 0, 0); // 2 horas después
 
-    return now < matchDateTime; // lo mantenemos si aún no ha pasado
+  matches = matches.filter(match => {
+    const matchDate = new Date(`${match.date}T${match.time}:00`);
+    const expiration = new Date(matchDate.getTime() + 2 * 60 * 60 * 1000); // 2 horas después
+    return now < expiration;
   });
 
-  saveMatches(); // importante para que también se actualice matches.json
-  console.log('🧹 Limpieza automática ejecutada.');
+  saveMatches();
+  console.log("🧹 Auto-clean: removed expired matches");
+
 }, 1000 * 60 * 10); // cada 10 minutos
 
-
+// ------------------ Iniciar servidor ---------------------
 server.listen(3000, () => {
   console.log('🚀 Server running on http://localhost:3000');
 });
