@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const cron = require('node-cron');
 
 const app = express();
 app.use(cors());
@@ -111,19 +112,15 @@ io.on('connection', (socket) => {
 });
 
 // ------------------ Limpieza automática ---------------------
-setInterval(() => {
-  const now = new Date();
-
-  matches = matches.filter(match => {
-    const matchDate = new Date(`${match.date}T${match.time}:00`);
-    const expiration = new Date(matchDate.getTime() + 2 * 60 * 60 * 1000); // 2 horas después
-    return now < expiration;
-  });
-
+// A las 23:00 cada día, elimina TODOS los partidos cuya fecha
+// coincida con la del día actual.
+cron.schedule('0 23 * * *', () => {
+  const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+  matches = matches.filter(match => match.date !== today);
   saveMatches();
-  console.log("🧹 Auto-clean: removed expired matches");
+  console.log(`🧹 Cron-clean: removed all matches for ${today}`);
+});
 
-}, 1000 * 60 * 10); // cada 10 minutos
 
 // ------------------ Iniciar servidor ---------------------
 server.listen(3000, () => {
