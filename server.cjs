@@ -1,128 +1,85 @@
-const express = require('express');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { Server } = require('socket.io');
-const cors = require('cors');
-const cron = require('node-cron');
+import fs from 'fs';
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import { Pool } from 'pg';
+import cron from 'node-cron';
 
 const app = express();
-app.use(cors());
-
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+const io = new Server(server);
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// 1. Inicializar tabla
+(async () => {
+  const sql = fs.readFileSync('./init.sql', 'utf8');
+  await pool.query(sql);
+  console.log('✅ Tabla `matches` lista en PostgreSQL');
+})();
+
+// 2. Funciones de acceso a datos
+async function loadMatches() {
+  const { rows } = await pool.query('SELECT * FROM matches');
+  return rows.map(r => ({
+    id: r.id,
+    creatorName: r.creator_name,
+    sport: r.sport,
+    date: r.date.toISOString().slice(0,10),
+    time: r.time,
+    note: r.note,
+    joinRequests: r.join_requests
+  }));
+}
+
+async function saveMatch(match) {
+  await pool.query(
+    `INSERT INTO matches(id, creator_name, sport, date, time, note, join_requests)
+     VALUES($1,$2,$3,$4,$5,$6,$7)`,
+    [
+      match.id,
+      match.creatorName,
+      match.sport,
+      match.date,
+      match.time,
+      match.note || null,
+      JSON.stringify(match.joinRequests)
+    ]
+  );
+}
+
+async function updateJoinRequests(id, joinRequests) {
+  await pool.query(
+    `UPDATE matches SET join_requests = $1 WHERE id = $2`,
+    [JSON.stringify(joinRequests), id]
+  );
+}
+
+// 3. Cron diario a las 23:00 para limpiar
+cron.schedule('0 23 * * *', async () => {
+  const today = new Date().toISOString().slice(0,10);
+  await pool.query('DELETE FROM matches WHERE date = $1', [today]);
+  console.log(`🧹 Cron-clean: eliminados partidos de ${today}`);
 });
 
-// ------------------ Matches y persistencia ---------------------
-let matches = [];
-const matchesFile = path.join(__dirname, 'matches.json');
+// 4. Socket handlers
+io.on('connection', socket => {
+  // Enviar lista inicial
+  loadMatches().then(data => socket.emit('existingMatches', data));
 
-const saveMatches = () => {
-  fs.writeFileSync(matchesFile, JSON.stringify(matches, null, 2));
-  console.log('💾 Matches saved to file');
-};
-
-const loadMatches = () => {
-  try {
-    if (fs.existsSync(matchesFile)) {
-      const data = fs.readFileSync(matchesFile);
-      matches = JSON.parse(data);
-      console.log(`✅ Loaded ${matches.length} matches from file`);
-    }
-  } catch (err) {
-    console.error("❌ Error loading matches:", err);
-  }
-};
-
-loadMatches(); // Cargar partidos al iniciar
-
-// ------------------ Usuarios conectados ---------------------
-const connectedUsers = {};
-
-// ------------------ Socket.IO ---------------------
-io.on('connection', (socket) => {
-  console.log('🔗 Client connected:', socket.id);
-
-  const formatHotelCode = (code) => {
-    return code.trim().charAt(0).toUpperCase() + code.trim().slice(1).toLowerCase();
-  };
-
-  socket.on('identify', (username) => {
-    connectedUsers[username] = socket.id;
+  socket.on('createMatch', async match => {
+    await saveMatch(match);
+    io.emit('matchCreated', match);
   });
 
-  socket.on('getMatches', (hotelCode) => {
-    const formattedHotel = formatHotelCode(hotelCode);
-    socket.join(formattedHotel);
-    const hotelMatches = matches.filter(m => m.hotel === formattedHotel);
-    socket.emit('existingMatches', hotelMatches);
-  });
-
-  socket.on('createMatch', (match) => {
-    matches.push(match);
-    saveMatches();
-    const hotelMatches = matches.filter(m => m.hotel === match.hotel);
-    io.to(match.hotel).emit('existingMatches', hotelMatches);
-    console.log(`🎾 Match created by ${match.creatorName} (${match.sport} - ${match.date} ${match.time})`);
-  });
-
-  socket.on('requestToJoin', ({ matchId, request }) => {
-    const match = matches.find(m => m.id === matchId);
-    if (!match) return;
-
-    const isLimited = ['Padel', 'Tennis', 'Table Tennis', 'Ping Pong', 'Volleyball'].includes(match.sport);
-    if (isLimited && match.joinRequests.length >= 3) {
-      return;
-    }
-
-    match.joinRequests.push(request);
-    saveMatches();
-    const hotelMatches = matches.filter(m => m.hotel === match.hotel);
-    io.to(match.hotel).emit('existingMatches', hotelMatches);
-  });
-
-  socket.on('updateNote', ({ matchId, note }) => {
-    const match = matches.find(m => m.id === matchId);
-    if (!match) return;
-
-    match.note = note;
-    saveMatches();
-    const hotelMatches = matches.filter(m => m.hotel === match.hotel);
-    io.to(match.hotel).emit('existingMatches', hotelMatches);
-  });
-
-  socket.on('removePlayer', ({ matchId, playerName }) => {
-    const match = matches.find(m => m.id === matchId);
-    if (!match) return;
-
-    match.joinRequests = match.joinRequests.filter(r => r.guestName !== playerName);
-    saveMatches();
-    const hotelMatches = matches.filter(m => m.hotel === match.hotel);
-    io.to(match.hotel).emit('existingMatches', hotelMatches);
-    console.log(`🚪 Player ${playerName} removed from match ${matchId}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('❌ Client disconnected:', socket.id);
+  socket.on('requestToJoin', async ({ matchId, request }) => {
+    // Obtener, actualizar y guardar
+    const res = await pool.query('SELECT join_requests FROM matches WHERE id=$1', [matchId]);
+    const joinRequests = res.rows[0].join_requests;
+    joinRequests.push(request);
+    await updateJoinRequests(matchId, joinRequests);
+    io.emit('matchUpdated', { id: matchId, joinRequests });
   });
 });
 
-// ------------------ Limpieza automática ---------------------
-// A las 23:00 cada día, elimina TODOS los partidos cuya fecha
-// coincida con la del día actual.
-cron.schedule('0 23 * * *', () => {
-  const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
-  matches = matches.filter(match => match.date !== today);
-  saveMatches();
-  console.log(`🧹 Cron-clean: removed all matches for ${today}`);
-});
-
-
-// ------------------ Iniciar servidor ---------------------
-server.listen(3000, () => {
-  console.log('🚀 Server running on http://localhost:3000');
-});
+// 5. Iniciar servidor
+server.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));
