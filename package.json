@@ -1,16 +1,17 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "hotel-backend",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "main": "src/server.mjs",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node src/server.mjs",
-
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-
     "lint": "eslint ."
   },
   "dependencies": {
