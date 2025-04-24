@@ -3,11 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/server.mjs",
   "scripts": {
+    "start": "node src/server.mjs",
+
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+
+    "lint": "eslint ."
   },
   "dependencies": {
     "cors": "^2.8.5",
