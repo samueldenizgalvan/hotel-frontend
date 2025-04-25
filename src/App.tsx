@@ -5,9 +5,14 @@ import { toast, ToastContainer } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'react-toastify/dist/ReactToastify.css';
 
-const socket: Socket = io(import.meta.env.VITE_BACKEND_URL);
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;  // ya tipado gracias a vite-env.d.ts
+const socket: Socket = io(BACKEND_URL, {
+  // opcional: si tu back expone CORS
+  transports: ['websocket']
+});
 
 function App() {
+
   const [currentUser, setCurrentUser] = useState('');
   // Al cargar la app, revisamos si hay datos guardados en localStorage
 useEffect(() => {
