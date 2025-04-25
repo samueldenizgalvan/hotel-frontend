@@ -55,11 +55,16 @@ useEffect(() => {
       });
   
       // 🔁 Escuchamos actualizaciones de matches
-      socket.on('matchUpdated', (updatedMatch) => {
-        setMatches(prevMatches =>
-          prevMatches.map(m => (m.id === updatedMatch.id ? updatedMatch : m))
+      socket.on('matchUpdated', ({ id, joinRequests }) => {
+        setMatches(prev =>
+          prev.map(m =>
+            m.id === id
+              ? { ...m, joinRequests } // mantenemos el resto de datos
+              : m
+          )
         );
       });
+      
       // 👇 Actualiza después de eliminar participación
 socket.on('playerRemoved', (updatedMatch) => {
   setMatches(prev =>
