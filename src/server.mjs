@@ -96,10 +96,11 @@ io.on('connection', socket => {
   socket.on('requestToJoin', async ({ matchId, request }) => {
     console.log('📥 requestToJoin recibido para match', matchId, request);
     try {
-      const res = await pool.query(
-        'SELECT join_requests FROM matches WHERE id=$1',
-        [matchId]
-      );
+      const res = await pool.query('SELECT join_requests FROM matches WHERE id=$1', [matchId]);
+if (res.rowCount === 0) {
+  console.error(`❌ No se encontró la partida con ID: ${matchId}`);
+  return; // salimos sin hacer nada
+}
       const joinRequests = res.rows[0].join_requests;
       joinRequests.push(request);
       await updateJoinRequests(matchId, joinRequests);
