@@ -4,7 +4,7 @@
       "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "installCommand": "pnpm install --no-optional"
+        "installCommand": "npm install --no-optional"
       }
     }
   ],
