@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import 'react-toastify/dist/ReactToastify.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const socket: Socket = io(BACKEND_URL, {
+const socket: Socket = io(BACKEND_URL ?? 'http://localhost:3000', {
   transports: ['websocket'],
 });
+
 
 function App() {
   const [currentUser, setCurrentUser] = useState('');
