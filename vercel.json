@@ -7,8 +7,5 @@
         "installCommand": "npm install --no-optional"
       }
     }
-  ],
-  "engines": {
-    "node": "18.x"
-  }
+  ]
 }
