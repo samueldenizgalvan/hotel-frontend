@@ -318,19 +318,21 @@ function App() {
                     </h4>
                     <ul className="text-sm text-gray-800 ml-2">
                       <li>{match.creatorName} (creator)</li>
-                      {match.joinRequests.map((r: any) => (
-                        <li key={r.id}>
-                          {r.guestName}
-                          {r.guestName === currentUser && (
-                            <button
-                              onClick={() => removePlayer(match.id)}
-                              className="ml-2 text-red-600 text-xs hover:underline"
-                            >
-                              Remove participation
-                            </button>
-                          )}
-                        </li>
-                      ))}
+                      {Array.isArray(match.joinRequests) &&
+  match.joinRequests.map((r: any) => (
+    <li key={r.id}>
+      {r.guestName}
+      {r.guestName === currentUser && (
+        <button
+          onClick={() => removePlayer(match.id)}
+          className="ml-2 text-red-600 text-xs hover:underline"
+        >
+          Remove participation
+        </button>
+      )}
+    </li>
+  ))}
+
                     </ul>
                   </div>
                 </motion.div>
