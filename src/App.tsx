@@ -36,6 +36,8 @@ function App() {
       setIsLoggedIn(true);
       socket.emit('identify', parsed.name);
       socket.emit('getMatches', parsed.hotel); // Emitir getMatches con el hotelCode
+      socket.emit("editNote", { matchId: match.id, newNote: note });
+
     }
   }, []);
 
