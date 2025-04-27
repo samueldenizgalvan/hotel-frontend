@@ -36,6 +36,7 @@ function App() {
       setIsLoggedIn(true);
       socket.emit('identify', parsed.name);
       socket.emit('getMatches', parsed.hotel); // Emitir getMatches con el hotelCode
+      console.log("✏️ Enviando editNote:", { matchId: match.id, newNote });
       socket.emit("editNote", { matchId: match.id, newNote: note });
 
     }
@@ -149,9 +150,10 @@ function App() {
   const updateNote = (matchId: string, note: string) => {
     const newNote = prompt('Edit note:', note);
     if (newNote !== null) {
-      socket.emit('updateNote', { matchId, note: newNote });
+      socket.emit('editNote', { matchId, newNote }); // 👈 Cambiado de 'updateNote' a 'editNote'
     }
   };
+  
 
   return (
     <>
