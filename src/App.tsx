@@ -4,6 +4,7 @@ import { Calendar, Users, Pencil, Info, UserPlus, Plus, X } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'react-toastify/dist/ReactToastify.css';
+import './index.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const socket: Socket = io(BACKEND_URL ?? 'http://localhost:3000', {
