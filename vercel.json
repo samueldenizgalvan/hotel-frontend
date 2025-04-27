@@ -4,8 +4,16 @@
       "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "installCommand": "npm install --no-optional"
+        "installCommand": "npm install --no-optional",
+        "buildCommand": "npm run build",
+        "outputDirectory": "dist"
       }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
