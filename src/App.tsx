@@ -38,10 +38,8 @@ function App() {
       setIsLoggedIn(true);
       socket.emit('identify', parsed.name);
       socket.emit('getMatches', parsed.hotel); // Emitir getMatches con el hotelCode
-      console.log("✏️ Enviando editNote:", { matchId: match.id, newNote });
-      socket.emit("editNote", { matchId: match.id, newNote: note });
-
     }
+
   }, []);
 
   // Escuchar eventos del servidor
