@@ -27,6 +27,9 @@ function App() {
     note: '',
   });
 
+
+  // USEEFFECT 
+
   // Cargar datos del localStorage al montar el componente
   useEffect(() => {
     const savedUser = localStorage.getItem('profile');
@@ -37,41 +40,22 @@ function App() {
       setIsAdult(parsed.isAdult);
       setIsLoggedIn(true);
       socket.emit('identify', parsed.name);
-      socket.emit('getMatches', parsed.hotel); // Emitir getMatches con el hotelCode
+      socket.emit('getMatches', parsed.hotel);
     }
-
   }, []);
 
-  // Escuchar eventos del servidor
+  // Escuchar eventos del servidor: existingMatches y matchCreated
   useEffect(() => {
     if (isLoggedIn) {
       socket.on('existingMatches', (data) => {
         console.log('Received matches:', data);
-        // Filtrar partidos por hotelCode como respaldo
         const filteredMatches = data.filter((match: any) => match.hotel === hotelCode);
         setMatches(filteredMatches);
       });
 
       socket.on('matchCreated', (newMatch) => {
         console.log('Nuevo match agregado:', newMatch);
-        // No añadimos directamente al estado; esperamos a que el servidor emita existingMatches
       });
-
-      useEffect(() => {
-        socket.on('matchesUpdate', (matches) => {
-          console.log('matches recibidos:', matches);
-          if (Array.isArray(matches)) {
-            setMatches(matches);
-          } else {
-            console.warn('matchesUpdate recibido pero no es un array:', matches);
-            setMatches([]); // o mantener los anteriores si prefieres
-          }
-        });
-        
-      
-        return () => socket.off('matchesUpdate');
-      }, []);
-      
 
       socket.on('playerRemoved', (updatedMatch) => {
         setMatches(prev =>
@@ -87,6 +71,24 @@ function App() {
       };
     }
   }, [isLoggedIn, hotelCode]);
+
+  // Escuchar eventos del servidor: matchesUpdate (movido a un useEffect separado)
+  useEffect(() => {
+    if (isLoggedIn) {
+      socket.on('matchesUpdate', (matches) => {
+        console.log('matches recibidos:', matches);
+        if (Array.isArray(matches)) {
+          setMatches(matches);
+        } else {
+          console.warn('matchesUpdate recibido pero no es un array:', matches);
+          setMatches([]);
+        }
+      });
+
+      return () => socket.off('matchesUpdate');
+    }
+  }, [isLoggedIn]);
+
 
   // Lista de hoteles válidos
   const validHotels = ['Radisson'];
