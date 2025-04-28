@@ -57,11 +57,14 @@ function App() {
         // No añadimos directamente al estado; esperamos a que el servidor emita existingMatches
       });
 
-      socket.on('matchUpdated', ({ id, joinRequests }) => {
-        setMatches(prev =>
-          prev.map(m => (m.id === id ? { ...m, joinRequests } : m))
-        );
-      });
+      useEffect(() => {
+        socket.on('matchesUpdate', (matches) => {
+          setMatches(matches);
+        });
+      
+        return () => socket.off('matchesUpdate');
+      }, []);
+      
 
       socket.on('playerRemoved', (updatedMatch) => {
         setMatches(prev =>
