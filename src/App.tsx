@@ -60,8 +60,14 @@ function App() {
       useEffect(() => {
         socket.on('matchesUpdate', (matches) => {
           console.log('matches recibidos:', matches);
-          setMatches(matches);
+          if (Array.isArray(matches)) {
+            setMatches(matches);
+          } else {
+            console.warn('matchesUpdate recibido pero no es un array:', matches);
+            setMatches([]); // o mantener los anteriores si prefieres
+          }
         });
+        
       
         return () => socket.off('matchesUpdate');
       }, []);
