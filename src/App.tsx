@@ -59,6 +59,7 @@ function App() {
 
       useEffect(() => {
         socket.on('matchesUpdate', (matches) => {
+          console.log('matches recibidos:', matches);
           setMatches(matches);
         });
       
@@ -325,7 +326,7 @@ function App() {
                     </h4>
                     <ul className="text-sm text-gray-800 ml-2">
                       <li>{match.creatorName} (creator)</li>
-                      {Array.isArray(match.joinRequests) &&
+                      {Array.isArray(match.joinRequests) ? (
   match.joinRequests.map((r: any) => (
     <li key={r.id}>
       {r.guestName}
@@ -338,7 +339,11 @@ function App() {
         </button>
       )}
     </li>
-  ))}
+  ))
+) : (
+  <li className="text-sm text-gray-500 italic">No players joined yet.</li>
+)}
+
 
                     </ul>
                   </div>
