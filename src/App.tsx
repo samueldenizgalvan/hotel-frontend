@@ -123,15 +123,16 @@ function App() {
 
   const createMatch = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!newMatch.date || !newMatch.time) {
-      toast.error('Please select date and time');
+  
+    // Comprobar explícitamente cadenas vacías
+    if (!newMatch.date || newMatch.date === '' || !newMatch.time || newMatch.time === '') {
+      toast.error('Por favor selecciona fecha y hora');
       return;
     }
-
+  
     const formattedHotelCode =
       hotelCode.trim().charAt(0).toUpperCase() + hotelCode.trim().slice(1).toLowerCase();
-
+  
     const match = {
       ...newMatch,
       creatorName: currentUser,
@@ -139,7 +140,7 @@ function App() {
       joinRequests: [],
       hotel: formattedHotelCode,
     };
-
+  
     socket.emit('createMatch', match);
     setShowCreateForm(false);
     setNewMatch({ creatorName: '', sport: 'Padel', date: '', time: '', note: '' });
